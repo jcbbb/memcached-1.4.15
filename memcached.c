@@ -2989,7 +2989,7 @@ static void process_touch_command(conn *c, token_t *tokens, const size_t ntokens
     }
 }
 
-static void process_arithmetic_command(conn *c, token_t *tokens, const size_t ntokens, const bool incr) {
+static void process_arithmetic_command(conn *c, token_t *tokens, const size_t ntokens, enum arithmetic_op_type op_type) {
     char temp[INCR_MAX_STORAGE_LEN];
     uint64_t delta;
     char *key;
@@ -3012,7 +3012,7 @@ static void process_arithmetic_command(conn *c, token_t *tokens, const size_t nt
         return;
     }
 
-    switch(add_delta(c, key, nkey, incr, delta, temp, NULL)) {
+    switch(add_delta(c, key, nkey, op_type, delta, temp, NULL)) {
     case OK:
         out_string(c, temp);
         break;
@@ -3024,10 +3024,18 @@ static void process_arithmetic_command(conn *c, token_t *tokens, const size_t nt
         break;
     case DELTA_ITEM_NOT_FOUND:
         pthread_mutex_lock(&c->thread->stats.mutex);
-        if (incr) {
+
+        switch (op_type) {
+          case ARITHMETIC_PLUS: {
             c->thread->stats.incr_misses++;
-        } else {
+          } break;
+          case ARITHMETIC_MINUS: {
             c->thread->stats.decr_misses++;
+          } break;
+          case ARITHMETIC_MULTIPLY: {
+          } break;
+          default:
+            break;
         }
         pthread_mutex_unlock(&c->thread->stats.mutex);
 
@@ -3050,7 +3058,7 @@ static void process_arithmetic_command(conn *c, token_t *tokens, const size_t nt
  * returns a response string to send back to the client.
  */
 enum delta_result_type do_add_delta(conn *c, const char *key, const size_t nkey,
-                                    const bool incr, const int64_t delta,
+                                    enum arithmetic_op_type op_type, const int64_t delta,
                                     char *buf, uint64_t *cas,
                                     const uint32_t hv) {
     char *ptr;
@@ -3075,23 +3083,37 @@ enum delta_result_type do_add_delta(conn *c, const char *key, const size_t nkey,
         return NON_NUMERIC;
     }
 
-    if (incr) {
+    switch (op_type) {
+      case ARITHMETIC_PLUS: {
         value += delta;
         MEMCACHED_COMMAND_INCR(c->sfd, ITEM_key(it), it->nkey, value);
-    } else {
+      } break;
+      case ARITHMETIC_MINUS: {
         if(delta > value) {
             value = 0;
         } else {
             value -= delta;
         }
         MEMCACHED_COMMAND_DECR(c->sfd, ITEM_key(it), it->nkey, value);
+      } break;
+      case ARITHMETIC_MULTIPLY: {
+      } break;
+      default:
+        break;
     }
 
     pthread_mutex_lock(&c->thread->stats.mutex);
-    if (incr) {
+    switch (op_type) {
+      case ARITHMETIC_PLUS: {
         c->thread->stats.slab_stats[it->slabs_clsid].incr_hits++;
-    } else {
+      } break;
+      case ARITHMETIC_MINUS: {
         c->thread->stats.slab_stats[it->slabs_clsid].decr_hits++;
+      } break;
+      case ARITHMETIC_MULTIPLY: {
+      } break;
+      default:
+        break;
     }
     pthread_mutex_unlock(&c->thread->stats.mutex);
 
@@ -3263,7 +3285,11 @@ static void process_command(conn *c, char *command) {
 
     } else if ((ntokens == 4 || ntokens == 5) && (strcmp(tokens[COMMAND_TOKEN].value, "incr") == 0)) {
 
-        process_arithmetic_command(c, tokens, ntokens, 1);
+        process_arithmetic_command(c, tokens, ntokens, ARITHMETIC_PLUS);
+
+    } else if ((ntokens == 4 || ntokens == 5) && (strcmp(tokens[COMMAND_TOKEN].value, "mult") == 0)) {
+
+        process_arithmetic_command(c, tokens, ntokens, ARITHMETIC_MULTIPLY);
 
     } else if (ntokens >= 3 && (strcmp(tokens[COMMAND_TOKEN].value, "gets") == 0)) {
 
@@ -3271,7 +3297,7 @@ static void process_command(conn *c, char *command) {
 
     } else if ((ntokens == 4 || ntokens == 5) && (strcmp(tokens[COMMAND_TOKEN].value, "decr") == 0)) {
 
-        process_arithmetic_command(c, tokens, ntokens, 0);
+        process_arithmetic_command(c, tokens, ntokens, ARITHMETIC_MINUS);
 
     } else if (ntokens >= 3 && ntokens <= 5 && (strcmp(tokens[COMMAND_TOKEN].value, "delete") == 0)) {
 
