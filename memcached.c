@@ -2566,6 +2566,8 @@ static void server_stats(ADD_STAT add_stats, conn *c) {
     APPEND_STAT("delete_hits", "%llu", (unsigned long long)slab_stats.delete_hits);
     APPEND_STAT("incr_misses", "%llu", (unsigned long long)thread_stats.incr_misses);
     APPEND_STAT("incr_hits", "%llu", (unsigned long long)slab_stats.incr_hits);
+    APPEND_STAT("mult_misses", "%llu", (unsigned long long)thread_stats.mult_misses);
+    APPEND_STAT("mult_hits", "%llu", (unsigned long long)slab_stats.mult_hits);
     APPEND_STAT("decr_misses", "%llu", (unsigned long long)thread_stats.decr_misses);
     APPEND_STAT("decr_hits", "%llu", (unsigned long long)slab_stats.decr_hits);
     APPEND_STAT("cas_misses", "%llu", (unsigned long long)thread_stats.cas_misses);
@@ -3033,6 +3035,7 @@ static void process_arithmetic_command(conn *c, token_t *tokens, const size_t nt
             c->thread->stats.decr_misses++;
           } break;
           case ARITHMETIC_MULTIPLY: {
+            c->thread->stats.mult_misses++;
           } break;
           default:
             break;
@@ -3051,7 +3054,7 @@ static void process_arithmetic_command(conn *c, token_t *tokens, const size_t nt
  *
  * c     connection requesting the operation
  * it    item to adjust
- * incr  true to increment value, false to decrement
+ * op_type  arithmetic operation type (plus, minus, multiply)
  * delta amount to adjust value by
  * buf   buffer for response string
  *
@@ -3097,6 +3100,8 @@ enum delta_result_type do_add_delta(conn *c, const char *key, const size_t nkey,
         MEMCACHED_COMMAND_DECR(c->sfd, ITEM_key(it), it->nkey, value);
       } break;
       case ARITHMETIC_MULTIPLY: {
+        value *= delta;
+        MEMCACHED_COMMAND_MULT(c->sfd, ITEM_key(it), it->nkey, value);
       } break;
       default:
         break;
@@ -3111,6 +3116,7 @@ enum delta_result_type do_add_delta(conn *c, const char *key, const size_t nkey,
         c->thread->stats.slab_stats[it->slabs_clsid].decr_hits++;
       } break;
       case ARITHMETIC_MULTIPLY: {
+        c->thread->stats.slab_stats[it->slabs_clsid].mult_hits++;
       } break;
       default:
         break;
