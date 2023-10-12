@@ -32,6 +32,8 @@ my $sock = $server->sock;
 ## STAT delete_hits 0
 ## STAT incr_misses 0
 ## STAT incr_hits 0
+## STAT mult_misses 0
+## STAT mult_hits 0
 ## STAT decr_misses 0
 ## STAT decr_hits 0
 ## STAT cas_misses 0
@@ -62,7 +64,7 @@ is(scalar(keys(%$stats)), 48, "48 stats values");
 
 # Test initial state
 foreach my $key (qw(curr_items total_items bytes cmd_get cmd_set get_hits evictions get_misses
-                 bytes_written delete_hits delete_misses incr_hits incr_misses decr_hits
+                 bytes_written delete_hits delete_misses incr_hits incr_misses decr_hits mult_misses mult_hits
                  decr_misses listen_disabled_num)) {
     is($stats->{$key}, 0, "initial $key is zero");
 }
@@ -181,6 +183,8 @@ is(0, $stats->{'delete_misses'});
 is(0, $stats->{'delete_hits'});
 is(0, $stats->{'incr_misses'});
 is(0, $stats->{'incr_hits'});
+is(0, $stats->{'mult_misses'});
+is(0, $stats->{'mult_hits'});
 is(0, $stats->{'decr_misses'});
 is(0, $stats->{'decr_hits'});
 is(0, $stats->{'cas_misses'});

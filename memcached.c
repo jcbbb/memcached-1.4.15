@@ -1065,7 +1065,8 @@ static void complete_incr_bin(conn *c) {
     if (c->binary_header.request.cas != 0) {
         cas = c->binary_header.request.cas;
     }
-    switch(add_delta(c, key, nkey, c->cmd == PROTOCOL_BINARY_CMD_INCREMENT,
+
+    switch(add_delta(c, key, nkey, (enum arithmetic_op_type) c->cmd,
                      req->message.body.delta, tmpbuf,
                      &cas)) {
     case OK:
@@ -1105,10 +1106,10 @@ static void complete_incr_bin(conn *c) {
             }
         } else {
             pthread_mutex_lock(&c->thread->stats.mutex);
-            if (c->cmd == PROTOCOL_BINARY_CMD_INCREMENT) {
-                c->thread->stats.incr_misses++;
-            } else {
-                c->thread->stats.decr_misses++;
+            switch (c->cmd) {
+                case PROTOCOL_BINARY_CMD_INCREMENT: c->thread->stats.incr_misses++; break;
+                case PROTOCOL_BINARY_CMD_DECREMENT: c->thread->stats.decr_misses++; break;
+                case PROTOCOL_BINARY_CMD_MULT: c->thread->stats.mult_misses++; break;
             }
             pthread_mutex_unlock(&c->thread->stats.mutex);
 
@@ -1828,6 +1829,9 @@ static void dispatch_bin_command(conn *c) {
     case PROTOCOL_BINARY_CMD_DECREMENTQ:
         c->cmd = PROTOCOL_BINARY_CMD_DECREMENT;
         break;
+    case PROTOCOL_BINARY_CMD_MULTQ:
+        c->cmd = PROTOCOL_BINARY_CMD_MULT;
+        break;
     case PROTOCOL_BINARY_CMD_QUITQ:
         c->cmd = PROTOCOL_BINARY_CMD_QUIT;
         break;
@@ -1906,6 +1910,7 @@ static void dispatch_bin_command(conn *c) {
             break;
         case PROTOCOL_BINARY_CMD_INCREMENT:
         case PROTOCOL_BINARY_CMD_DECREMENT:
+        case PROTOCOL_BINARY_CMD_MULT:
             if (keylen > 0 && extlen == 20 && bodylen == (keylen + extlen)) {
                 bin_read_key(c, bin_reading_incr_header, 20);
             } else {

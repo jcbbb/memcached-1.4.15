@@ -899,6 +899,7 @@ static void validate_response_header(protocol_binary_response_no_extras *respons
         case PROTOCOL_BINARY_CMD_DELETEQ:
         case PROTOCOL_BINARY_CMD_FLUSHQ:
         case PROTOCOL_BINARY_CMD_INCREMENTQ:
+        case PROTOCOL_BINARY_CMD_MULTQ:
         case PROTOCOL_BINARY_CMD_PREPENDQ:
         case PROTOCOL_BINARY_CMD_QUITQ:
         case PROTOCOL_BINARY_CMD_REPLACEQ:
@@ -930,6 +931,7 @@ static void validate_response_header(protocol_binary_response_no_extras *respons
             break;
 
         case PROTOCOL_BINARY_CMD_DECREMENT:
+        case PROTOCOL_BINARY_CMD_MULT:
         case PROTOCOL_BINARY_CMD_INCREMENT:
             assert(response->message.header.response.keylen == 0);
             assert(response->message.header.response.extlen == 0);
@@ -1602,7 +1604,7 @@ static enum test_return test_binary_stat(void) {
 }
 
 static enum test_return test_binary_illegal(void) {
-    uint8_t cmd = 0x25;
+    uint8_t cmd = 0x44;
     while (cmd != 0x00) {
         union {
             protocol_binary_request_no_extras request;

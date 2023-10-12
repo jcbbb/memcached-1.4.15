@@ -114,6 +114,8 @@ extern "C"
         PROTOCOL_BINARY_CMD_SASL_LIST_MECHS = 0x20,
         PROTOCOL_BINARY_CMD_SASL_AUTH = 0x21,
         PROTOCOL_BINARY_CMD_SASL_STEP = 0x22,
+        PROTOCOL_BINARY_CMD_MULT = 0x42,
+        PROTOCOL_BINARY_CMD_MULTQ = 0x43,
 
         /* These commands are used for range operations and exist within
          * this header for use in other projects.  Range operations are

@@ -203,7 +203,7 @@ enum delta_result_type {
 };
 
 enum arithmetic_op_type {
-    ARITHMETIC_PLUS, ARITHMETIC_MINUS, ARITHMETIC_MULTIPLY 
+    ARITHMETIC_PLUS = 0x05, ARITHMETIC_MINUS = 0x06, ARITHMETIC_MULTIPLY = 0x42
 };
 
 /** Time relative to server start. Smaller than time_t on 64-bit systems. */
